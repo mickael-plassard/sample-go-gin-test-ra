@@ -1,5 +1,3 @@
-Test
-
 # Sample Application with Go and Gin
 
 This sample is running on: https://go-gin.is-easy-on-scalingo.com/
