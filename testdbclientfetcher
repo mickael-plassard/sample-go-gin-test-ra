@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# Script to download and extract in the PATH the CLI tools for a specified database.
+# You can specify an optional database version which should have the form <major version>.<minor
+# version>.
+#
+
+set -e
+if [ -n "$SCALINGO_DEBUG" ]; then
+  set -x
+fi
+
+if [[ $# -ne 1 && $# -ne 2 ]] ; then
+  echo "Usage: $0 Database [DB version]"
+  echo ""
+  echo "  Database: can be any of mongo, redis, valkey, mysql, pgsql, influxdb."
+  echo "  DB version: is <major>.<minor>. Optional parameter."
+  echo ""
+  echo "Example: $0 pgsql 11.4"
+  exit 1
+fi
+
+cur_dir=$(cd "$(dirname "$0")" && pwd)
+cd "$cur_dir"
+
+db_type=$1
+# Fix a few common aliases for some databases
+if [[ "$db_type" = "postgresql" ]] || [[ "$db_type" = "psql" ]]; then
+  db_type="pgsql"
+elif [[ "$db_type" = "influx" ]]; then
+  db_type="influxdb"
+fi
+db_version=$2
+
+# Path to the CLI binaries relative to the extracted folder
+cli_bins=""
+case "$db_type" in
+  "mysql")
+    cli_bins="mysql"
+    ;;
+  "pgsql")
+    cli_bins="{pg_{archivecleanup,basebackup,config,controldata,ctl,dump,dumpall,isready,receivewal,recvlogical,resetwal,restore,rewind,test_fsync,test_timing,upgrade,waldump},psql}"
+    ;;
+  "mongo")
+    cli_bins="mongo{dump,restore,import,export,}"
+    ;;
+  "redis")
+    cli_bins="redis-cli"
+    ;;
+  "valkey")
+    cli_bins="valkey-cli"
+    ;;
+  "influxdb")
+    cli_bins="influx"
+    ;;
+  *)
+    echo "This script does not support the database type '$db_type'" >&2
+    exit 2
+    ;;
+esac
+
+cli_name="$db_type"
+if [[ "$db_type" = "pgsql" ]]; then
+  cli_name="psql"
+elif [[ "$db_type" = "redis" ]]; then
+  cli_name="redis-cli"
+elif [[ "$db_type" = "valkey" ]]; then
+  cli_name="valkey-cli"
+elif [[ "$db_type" = "influxdb" ]]; then
+  cli_name="influx"
+fi
+
+archive_name="${db_type}.tar.xz"
+if [[ -n "$db_version" ]]; then
+  archive_name="${db_type}-${db_version}.tar.xz"
+fi
+
+destination="${HOME}/bin"
+if [[ ! -d "$destination" ]]; then
+  mkdir -p "$destination"
+fi
+
+# Default stack is 'scalingo-18' in case it's not defined
+stack=${STACK:=scalingo-18}
+
+db_cli_url="https://cdn.scalingo.com/db-cli/${stack}/${archive_name}"
+
+# Download and extract the client
+echo "---> Download and extract the database CLI"
+curl --location "$db_cli_url" | tar --directory "$destination" --extract --xz --file - || \
+  echo -e "\nError when downloading the client. Are you sure about the specified type of" \
+  "database ($db_type)?" >&2 || exit 1
+if [[ ! -f "$destination/$cli_name" ]]; then
+  echo "Cannot find the extracted script. Malformed archive?" >&2
+  exit 2
+fi
+# We use eval to expand the glob expression in cli_bins
+eval chmod +x "${destination}/${cli_bins}"
+
+echo "---> Database CLI installed:"
+$cli_name --version
