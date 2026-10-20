@@ -86,10 +86,12 @@ stack=${STACK:=scalingo-18}
 db_cli_url="https://cdn.scalingo.com/db-cli/${stack}/${archive_name}"
 
 # Download and extract the client
+
 echo "---> Download and extract the database CLI"
-curl --location "$db_cli_url" | tar --directory "$destination" --extract --xz --file - || \
+curl --verbose --location "$db_cli_url" | tar --directory "$destination" --extract --xz --file - || \
   echo -e "\nError when downloading the client. Are you sure about the specified type of" \
   "database ($db_type)?" >&2 || exit 1
+
 if [[ ! -f "$destination/$cli_name" ]]; then
   echo "Cannot find the extracted script. Malformed archive?" >&2
   exit 2
