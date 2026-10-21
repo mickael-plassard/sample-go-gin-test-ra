@@ -1,6 +1,7 @@
 {
   "name": "Sample Go Gin",
   "description": "Sample web application using the Go framework Gin",
+  "stack": "scalingo-24",
   "logo": "https://scalingo.com/logo.svg",
   "repository": "https://github.com/Scalingo/sample-go-gin",
   "website": "https://scalingo.com",
